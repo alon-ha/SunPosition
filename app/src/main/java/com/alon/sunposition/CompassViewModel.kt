@@ -1,4 +1,5 @@
 package com.alon.sunposition
+
 import android.hardware.Sensor
 import android.hardware.Sensor.TYPE_ACCELEROMETER
 import android.hardware.Sensor.TYPE_MAGNETIC_FIELD
@@ -11,22 +12,24 @@ import io.reactivex.*
 import io.reactivex.subjects.BehaviorSubject
 
 
-interface CompassViewModeling: CompassViewModelingOutputs {
+interface CompassViewModeling {
     val outputs: CompassViewModelingOutputs
     val inputs: CompassViewModelingInputs
 
 }
 
 interface CompassViewModelingInputs {
-
+    fun registerSensors()
+    fun unregisterSensors()
 }
 
 interface CompassViewModelingOutputs {
-    val compassData: Observable<CompassData>
+    val compassPosition: Observable<AnimationData>
 }
 
 
-class CompassViewModel: CompassViewModeling, CompassViewModelingInputs, CompassViewModelingOutputs, SensorEventListener {
+class CompassViewModel: CompassViewModeling,
+    CompassViewModelingInputs, CompassViewModelingOutputs, SensorEventListener {
 
     override val inputs = this
     override val outputs = this
@@ -42,8 +45,8 @@ class CompassViewModel: CompassViewModeling, CompassViewModelingInputs, CompassV
     private var lastAccelerometerSet = false
     private var lastMagnetometerSet = false
 
-    private val compassDataInternal = BehaviorSubject.create<CompassData>()
-    override val compassData = compassDataInternal.hide()
+    private val _compassPosition = BehaviorSubject.create<AnimationData>()
+    override val compassPosition = _compassPosition.hide()
 
     constructor(context: Context) {
         this.context = context
@@ -72,6 +75,9 @@ class CompassViewModel: CompassViewModeling, CompassViewModelingInputs, CompassV
                 val degree = (toDegrees(orientation[0].toDouble()) + 360).toFloat() % 360
                 val newDegree = -degree
 
+                val data = AnimationData(currentDegree, newDegree)
+                _compassPosition.onNext(data)
+
                 currentDegree = newDegree
             }
         }
@@ -83,5 +89,15 @@ class CompassViewModel: CompassViewModeling, CompassViewModelingInputs, CompassV
         for (i in input.indices) {
             output[i] = output[i] + alpha * (input[i] - output[i])
         }
+    }
+
+    override fun registerSensors() {
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME)
+        sensorManager.registerListener(this, magnetometer, SensorManager.SENSOR_DELAY_GAME)
+    }
+
+    override fun unregisterSensors() {
+        sensorManager.unregisterListener(this, accelerometer)
+        sensorManager.unregisterListener(this, magnetometer)
     }
 }
