@@ -23,8 +23,8 @@
         android:layout_height="wrap_content"
         android:src="@mipmap/sunrise"
         app:layout_constraintCircle="@+id/compassImgView"
-        app:layout_constraintCircleAngle="90"
-        app:layout_constraintCircleRadius="80dp"/>
+        app:layout_constraintCircleAngle="0"
+        app:layout_constraintCircleRadius="150dp"/>
 
     <TextView
         android:id="@+id/descriptionTxtView"

@@ -67,15 +67,15 @@ class MainActivity : AppCompatActivity() {
     private fun setupObservers() {
         val compassSubscription = mainActivityViewModel.outputs.compassViewModel
             .outputs.compassPosition
-            .observeOn(AndroidSchedulers.mainThread())
             .throttleLast(throttleIntervalDuration, TimeUnit.MILLISECONDS)
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe {animationData -> animateCompass(animationData)}
 
         val visibilitySubscription = mainActivityViewModel.outputs.descriptionVisibility
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe { isVisible ->
                 val visibility = if (isVisible) View.VISIBLE else View.GONE
-                descriptionTxtView.setVisibility(visibility)
+                descriptionTxtView.visibility = visibility
             }
 
         val txtSubscription = mainActivityViewModel.outputs.descriptionTxt
@@ -85,8 +85,8 @@ class MainActivity : AppCompatActivity() {
             }
 
         val sunAzimuthSubscription =  mainActivityViewModel.outputs.sunAzimuthScreenRelative
-            .observeOn(AndroidSchedulers.mainThread())
             .throttleLast(throttleIntervalDuration, TimeUnit.MILLISECONDS)
+            .observeOn(AndroidSchedulers.mainThread())
             .subscribe {animationData -> animateSun(animationData)}
 
         compositeDisposable.add(compassSubscription)
