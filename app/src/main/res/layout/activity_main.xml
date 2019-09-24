@@ -17,6 +17,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@mipmap/compass"/>
+    <ImageView
+        android:id="@+id/sunImgView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@mipmap/sunrise"
+        app:layout_constraintCircle="@+id/compassImgView"
+        app:layout_constraintCircleAngle="90"
+        app:layout_constraintCircleRadius="80dp"/>
 
     <TextView
         android:id="@+id/descriptionTxtView"

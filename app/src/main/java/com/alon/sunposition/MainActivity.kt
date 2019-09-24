@@ -1,34 +1,52 @@
 package com.alon.sunposition
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.animation.Animation.RELATIVE_TO_SELF
 import android.view.animation.RotateAnimation
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import java.util.concurrent.TimeUnit
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable
+import android.animation.ValueAnimator
+import android.view.animation.LinearInterpolator
+import androidx.constraintlayout.widget.ConstraintLayout
+
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var mainActivityViewModel: MainActivityViewModeling
-    lateinit var compassImgView: ImageView
-    lateinit var descriptionTxtView: TextView
+    private lateinit var mainActivityViewModel: MainActivityViewModeling
+    private lateinit var compassImgView: ImageView
+    private lateinit var sunImgView: ImageView
+    private lateinit var descriptionTxtView: TextView
 
-    val compositeDisposable = CompositeDisposable()
+    private val throttleIntervalDuration: Long = 10
+    private val animationDuration: Long = 100
+    private val compositeDisposable = CompositeDisposable()
+    private val permissionsRequestLocationServiceCode = 1122
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         mainActivityViewModel = MainActivityViewModel(this)
-        compassImgView = findViewById(R.id.compassImgView) as ImageView
-        descriptionTxtView = findViewById(R.id.descriptionTxtView) as TextView
+        compassImgView = findViewById(R.id.compassImgView)
+        descriptionTxtView = findViewById(R.id.descriptionTxtView)
+        sunImgView = findViewById(R.id.sunImgView)
 
         setupObservers()
-        mainActivityViewModel.inputs.loadData()
+        if (isLocationPermissionGranted()) {
+            mainActivityViewModel.inputs.loadData()
+        } else {
+            askForLocationPermission()
+        }
     }
 
     override fun onDestroy() {
@@ -50,7 +68,7 @@ class MainActivity : AppCompatActivity() {
         val compassSubscription = mainActivityViewModel.outputs.compassViewModel
             .outputs.compassPosition
             .observeOn(AndroidSchedulers.mainThread())
-            .throttleLast(10, TimeUnit.MILLISECONDS)
+            .throttleLast(throttleIntervalDuration, TimeUnit.MILLISECONDS)
             .subscribe {animationData -> animateCompass(animationData)}
 
         val visibilitySubscription = mainActivityViewModel.outputs.descriptionVisibility
@@ -66,14 +84,15 @@ class MainActivity : AppCompatActivity() {
                 descriptionTxtView.text = txt
             }
 
-        val sunAzimuthSubscribtion =  mainActivityViewModel.outputs.sunAzimuthScreenRelative
+        val sunAzimuthSubscription =  mainActivityViewModel.outputs.sunAzimuthScreenRelative
             .observeOn(AndroidSchedulers.mainThread())
-//            .throttleLast(10, TimeUnit.MILLISECONDS)
-//            .subscribe({animationData -> animateSun(animationData)})
+            .throttleLast(throttleIntervalDuration, TimeUnit.MILLISECONDS)
+            .subscribe {animationData -> animateSun(animationData)}
 
         compositeDisposable.add(compassSubscription)
         compositeDisposable.add(visibilitySubscription)
         compositeDisposable.add(txtSubscription)
+        compositeDisposable.add(sunAzimuthSubscription)
     }
 
     private fun animateCompass(animationData: AnimationData) {
@@ -82,13 +101,60 @@ class MainActivity : AppCompatActivity() {
             animationData.currentDegree,
             RELATIVE_TO_SELF, 0.5f,
             RELATIVE_TO_SELF, 0.5f)
-        rotateAnimation.duration = 100
+        rotateAnimation.duration = animationDuration
         rotateAnimation.fillAfter = true
 
         compassImgView.startAnimation(rotateAnimation)
     }
 
     private fun animateSun(animationData: AnimationData) {
+        Log.d("Alon", "Sun current degree: " + animationData.currentDegree + "°")
 
+        val angleAnimation = ValueAnimator.ofFloat(animationData.previousDegree, animationData.currentDegree)
+        angleAnimation.duration = animationDuration
+        angleAnimation.interpolator = LinearInterpolator()
+
+        angleAnimation.addUpdateListener { valueAnimator ->
+            val value = valueAnimator.animatedValue as Float
+            val layoutParams = sunImgView.layoutParams as ConstraintLayout.LayoutParams
+            layoutParams.circleAngle = value
+            sunImgView.layoutParams =layoutParams
+        }
+
+        angleAnimation.start()
+    }
+
+    private fun isLocationPermissionGranted(): Boolean {
+        return (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED)
+    }
+
+    private fun askForLocationPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
+            permissionsRequestLocationServiceCode
+        )
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int,
+                                            permissions: Array<String>, grantResults: IntArray) {
+        when (requestCode) {
+            permissionsRequestLocationServiceCode -> {
+                if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    // permission was granted
+                    mainActivityViewModel.inputs.loadData()
+                } else {
+                    // permission denied
+                    Log.d("Alon", "Location permission denied")
+
+                }
+            }
+        }
     }
 }

@@ -1,12 +1,14 @@
 package com.alon.sunposition
 
+import android.content.Context
+import android.util.Log
 import io.reactivex.Observable
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import org.shredzone.commons.suncalc.SunPosition
 import java.util.*
+
 
 interface SunViewModeling {
     val outputs: SunViewModelingOutputs
@@ -15,7 +17,7 @@ interface SunViewModeling {
 }
 
 interface SunViewModelingInputs {
-    val loadSunPosition: PublishSubject<Pair<Int, Coordinate>>
+    val loadSunPosition: PublishSubject<Int>
 }
 
 interface SunViewModelingOutputs {
@@ -25,13 +27,13 @@ interface SunViewModelingOutputs {
 }
 
 
-class SunViewModel: SunViewModeling,
+class SunViewModel(context: Context): SunViewModeling,
     SunViewModelingInputs, SunViewModelingOutputs {
 
     override val inputs = this
     override val outputs = this
 
-    override val loadSunPosition = PublishSubject.create<Pair<Int, Coordinate>>()
+    override val loadSunPosition = PublishSubject.create<Int>()
     private val _sunPosition = BehaviorSubject.create<SunPosition>()
     override val sunPosition: Observable<SunPosition> = _sunPosition.hide()
     private val _isLoading = BehaviorSubject.create<Boolean>()
@@ -39,8 +41,8 @@ class SunViewModel: SunViewModeling,
     private val _isSunVisible = BehaviorSubject.create<Boolean>()
     override val isSunVisible: Observable<Boolean> = _isSunVisible.hide()
 
-    private val networkAPI: NetworkingAPI = NetworkAPI()
-
+    private val sunPositionService: SunPositionServicing = SunPositionService()
+    private val locationService: LocationServicing = LocationService(context)
 
     init {
         setupObservers()
@@ -49,12 +51,19 @@ class SunViewModel: SunViewModeling,
     private fun setupObservers() {
         loadSunPosition
             .subscribeOn(Schedulers.io())
-            .doOnNext { _ ->
+            .doOnNext {
                 _isLoading.onNext(true)
+                Log.d("Alon", "Before location--------")
+            }
+            .flatMap { hourOffset ->
+                locationService.fetchCurrentLocation()
+                    .map { Pair(hourOffset, it) }
             }
             .flatMap { input ->
-                val date = Date()
-                networkAPI.loadSunPosition(date, input.second)
+                val calendar = Calendar.getInstance()
+                calendar.add(Calendar.HOUR_OF_DAY, input.first)
+                val date = calendar.time
+                sunPositionService.fetchSunPosition(date, input.second)
             }
             .doOnNext { sunPos ->
                 _isLoading.onNext(false)
@@ -62,6 +71,8 @@ class SunViewModel: SunViewModeling,
                 _isSunVisible.onNext(isVisible)
                 _sunPosition.onNext(sunPos)
             }
-            .subscribe()
+            .subscribe({}, { error ->
+                Log.d("Alon", "Error: " + error.localizedMessage)
+            })
     }
 }

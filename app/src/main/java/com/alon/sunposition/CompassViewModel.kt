@@ -28,13 +28,12 @@ interface CompassViewModelingOutputs {
 }
 
 
-class CompassViewModel: CompassViewModeling,
+class CompassViewModel(context: Context): CompassViewModeling,
     CompassViewModelingInputs, CompassViewModelingOutputs, SensorEventListener {
 
     override val inputs = this
     override val outputs = this
 
-    private val context: Context
     private var sensorManager: SensorManager
     private val accelerometer: Sensor
     private val magnetometer: Sensor
@@ -48,9 +47,7 @@ class CompassViewModel: CompassViewModeling,
     private val _compassPosition = BehaviorSubject.create<AnimationData>()
     override val compassPosition = _compassPosition.hide()
 
-    constructor(context: Context) {
-        this.context = context
-
+    init {
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(TYPE_ACCELEROMETER)
         magnetometer = sensorManager.getDefaultSensor(TYPE_MAGNETIC_FIELD)

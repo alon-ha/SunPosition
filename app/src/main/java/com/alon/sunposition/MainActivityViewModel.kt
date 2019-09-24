@@ -29,24 +29,26 @@ interface MainActivityViewModelingOutputs {
 }
 
 
-class MainActivityViewModel: MainActivityViewModeling,
+class MainActivityViewModel(context: Context): MainActivityViewModeling,
     MainActivityViewModelingInputs, MainActivityViewModelingOutputs {
 
     override val inputs = this
     override val outputs = this
 
-    override lateinit var compassViewModel: CompassViewModeling
-    override val sunViewModel: SunViewModeling = SunViewModel()
+    override val compassViewModel: CompassViewModeling = CompassViewModel(context)
+    override val sunViewModel: SunViewModeling = SunViewModel(context)
 
     private val compassDegree: Observable<Float> = compassViewModel.outputs
         .compassPosition
         .map { pos -> pos.currentDegree }
 
-    override val sunAzimuthScreenRelative : Observable<AnimationData> = sunViewModel
+    private val sunAzimuth: Observable<Double> = sunViewModel
         .outputs.sunPosition
         .map { pos -> pos.azimuth }
-        .withLatestFrom(compassDegree)
-        .map { (sunAzimuth, compassDegree) ->
+
+    override val sunAzimuthScreenRelative : Observable<AnimationData> = compassDegree
+        .withLatestFrom(sunAzimuth)
+        .map { (compassDegree, sunAzimuth) ->
             (sunAzimuth + compassDegree.toDouble()) % 360
         }
         .map { degree -> degree.toFloat() }
@@ -74,11 +76,6 @@ class MainActivityViewModel: MainActivityViewModeling,
         }
 
 
-    constructor(context: Context) {
-        compassViewModel = CompassViewModel(context)
-    }
-
-
     override fun onResume() {
         compassViewModel.inputs.registerSensors()
     }
@@ -88,11 +85,9 @@ class MainActivityViewModel: MainActivityViewModeling,
     }
 
     override fun loadData() {
-        val coordinate = Coordinate(0.0,0.0)
-
         sunViewModel.inputs
             .loadSunPosition
-            .onNext(Pair(0, coordinate))
+            .onNext(0)
     }
 
 }
