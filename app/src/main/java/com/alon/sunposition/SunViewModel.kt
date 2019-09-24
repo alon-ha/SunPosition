@@ -21,6 +21,7 @@ interface SunViewModelingInputs {
 interface SunViewModelingOutputs {
     val sunPosition: Observable<SunPosition>
     val isLoading: Observable<Boolean>
+    val isSunVisible: Observable<Boolean>
 }
 
 
@@ -35,6 +36,8 @@ class SunViewModel: SunViewModeling,
     override val sunPosition: Observable<SunPosition> = _sunPosition.hide()
     private val _isLoading = BehaviorSubject.create<Boolean>()
     override val isLoading: Observable<Boolean> = _isLoading.hide()
+    private val _isSunVisible = BehaviorSubject.create<Boolean>()
+    override val isSunVisible: Observable<Boolean> = _isSunVisible.hide()
 
     private val networkAPI: NetworkingAPI = NetworkAPI()
 
@@ -55,9 +58,10 @@ class SunViewModel: SunViewModeling,
             }
             .doOnNext { sunPos ->
                 _isLoading.onNext(false)
+                val isVisible = sunPos.altitude > 0.0
+                _isSunVisible.onNext(isVisible)
                 _sunPosition.onNext(sunPos)
             }
-
-
+            .subscribe()
     }
 }

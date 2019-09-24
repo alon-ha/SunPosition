@@ -15,6 +15,5 @@ class NetworkAPI: NetworkingAPI {
             emitter.onNext(pos)
             emitter.onComplete()
         }
-
     }
 }
