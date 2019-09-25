@@ -17,7 +17,10 @@ import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable
 import android.animation.ValueAnimator
 import android.view.animation.LinearInterpolator
+import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import io.reactivex.Observable
+import io.reactivex.rxkotlin.withLatestFrom
 
 
 class MainActivity : AppCompatActivity() {
@@ -50,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        mainActivityViewModel.outputs.sunViewModel.inputs.dispose()
         compositeDisposable.dispose()
         super.onDestroy()
     }
@@ -71,11 +75,20 @@ class MainActivity : AppCompatActivity() {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe {animationData -> animateCompass(animationData)}
 
-        val visibilitySubscription = mainActivityViewModel.outputs.descriptionVisibility
+        val txtViewVisibilitySubscription = mainActivityViewModel.outputs.descriptionVisibility
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe { isVisible ->
                 val visibility = if (isVisible) View.VISIBLE else View.GONE
                 descriptionTxtView.visibility = visibility
+            }
+
+        val isSunVisibleObservable: Observable<Boolean> = mainActivityViewModel.outputs.sunViewModel
+            .outputs.isSunVisible
+        val sunImgViewVisibilitySubscription = isSunVisibleObservable
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe { isVisible ->
+                val visibility = if (isVisible) View.VISIBLE else View.GONE
+                sunImgView.visibility = visibility
             }
 
         val txtSubscription = mainActivityViewModel.outputs.descriptionTxt
@@ -85,12 +98,20 @@ class MainActivity : AppCompatActivity() {
             }
 
         val sunAzimuthSubscription =  mainActivityViewModel.outputs.sunAzimuthScreenRelative
+            .withLatestFrom(isSunVisibleObservable)
+            .filter{ (_, isVisible) ->
+                isVisible
+            }
+            .map { (sunAzimuth, _) ->
+                sunAzimuth
+            }
             .throttleLast(throttleIntervalDuration, TimeUnit.MILLISECONDS)
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe {animationData -> animateSun(animationData)}
 
         compositeDisposable.add(compassSubscription)
-        compositeDisposable.add(visibilitySubscription)
+        compositeDisposable.add(txtViewVisibilitySubscription)
+        compositeDisposable.add(sunImgViewVisibilitySubscription)
         compositeDisposable.add(txtSubscription)
         compositeDisposable.add(sunAzimuthSubscription)
     }
@@ -108,8 +129,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun animateSun(animationData: AnimationData) {
-        Log.d("Alon", "Sun current degree: " + animationData.currentDegree + "°")
-
         val angleAnimation = ValueAnimator.ofFloat(animationData.previousDegree, animationData.currentDegree)
         angleAnimation.duration = animationDuration
         angleAnimation.interpolator = LinearInterpolator()
@@ -151,8 +170,11 @@ class MainActivity : AppCompatActivity() {
                     mainActivityViewModel.inputs.loadData()
                 } else {
                     // permission denied
-                    Log.d("Alon", "Location permission denied")
-
+                    Log.w("Alon", "Location permission denied")
+                    val message = "You must allow location permissions from the settings app."
+                    descriptionTxtView.text = message
+                    val toast = Toast.makeText(this, message, Toast.LENGTH_LONG)
+                    toast.show()
                 }
             }
         }

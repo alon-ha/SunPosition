@@ -3,6 +3,7 @@ package com.alon.sunposition
 import android.content.Context
 import android.util.Log
 import io.reactivex.Observable
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
@@ -13,11 +14,11 @@ import java.util.*
 interface SunViewModeling {
     val outputs: SunViewModelingOutputs
     val inputs: SunViewModelingInputs
-
 }
 
 interface SunViewModelingInputs {
     val loadSunPosition: PublishSubject<Int>
+    fun dispose()
 }
 
 interface SunViewModelingOutputs {
@@ -38,18 +39,19 @@ class SunViewModel(context: Context): SunViewModeling,
     override val sunPosition: Observable<SunPosition> = _sunPosition.hide()
     private val _isLoading = BehaviorSubject.create<Boolean>()
     override val isLoading: Observable<Boolean> = _isLoading.hide()
-    private val _isSunVisible = BehaviorSubject.create<Boolean>()
+    private val _isSunVisible = BehaviorSubject.createDefault<Boolean>(false)
     override val isSunVisible: Observable<Boolean> = _isSunVisible.hide()
 
     private val sunPositionService: SunPositionServicing = SunPositionService()
     private val locationService: LocationServicing = LocationService(context)
+    private val compositeDisposable = CompositeDisposable()
 
     init {
         setupObservers()
     }
 
     private fun setupObservers() {
-        loadSunPosition
+        val sunPositionSubscription = loadSunPosition
             .subscribeOn(Schedulers.io())
             .doOnNext {
                 _isLoading.onNext(true)
@@ -72,7 +74,13 @@ class SunViewModel(context: Context): SunViewModeling,
                 _sunPosition.onNext(sunPos)
             }
             .subscribe({}, { error ->
-                Log.d("Alon", "Error: " + error.localizedMessage)
+                Log.w("Alon", "Error: " + error.localizedMessage)
             })
+
+        compositeDisposable.add(sunPositionSubscription)
+    }
+
+    override fun dispose() {
+        compositeDisposable.dispose()
     }
 }

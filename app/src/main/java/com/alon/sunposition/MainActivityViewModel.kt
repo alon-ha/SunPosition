@@ -49,13 +49,16 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
     override val sunAzimuthScreenRelative : Observable<AnimationData> = compassDegree
         .withLatestFrom(sunAzimuth)
         .map { (compassDegree, sunAzimuth) ->
-            (sunAzimuth + compassDegree.toDouble()) % 360
+            var relativeAzimuth = (sunAzimuth + compassDegree.toDouble()) % 360
+            if (relativeAzimuth < 0) {
+                relativeAzimuth += 360
+            }
+            relativeAzimuth
         }
         .map { degree -> degree.toFloat() }
         .scan( AnimationData(0f,0f), {animationData: AnimationData, degree: Float ->
             AnimationData(animationData.currentDegree, degree)
         })
-
 
     override val descriptionVisibility : Observable<Boolean> =
         Observables.combineLatest(sunViewModel
@@ -89,5 +92,4 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
             .loadSunPosition
             .onNext(0)
     }
-
 }
