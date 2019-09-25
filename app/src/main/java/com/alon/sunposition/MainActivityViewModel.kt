@@ -1,12 +1,11 @@
 package com.alon.sunposition
 
 import android.content.Context
-import io.reactivex.*
 import io.reactivex.Observable
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.withLatestFrom
-import io.reactivex.functions.BiFunction
 import java.util.*
+import kotlin.math.absoluteValue
 
 
 interface MainActivityViewModeling {
@@ -25,7 +24,7 @@ interface MainActivityViewModelingInputs {
 interface MainActivityViewModelingOutputs {
     val compassViewModel: CompassViewModeling
     val sunViewModel: SunViewModeling
-    val sunAzimuthScreenRelative: Observable<AnimationData>
+    val sunPositionScreenRelative: Observable<SunAnimationData>
     val descriptionVisibility: Observable<Boolean>
     val descriptionTxt: Observable<String>
 }
@@ -51,7 +50,7 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
         .outputs.sunPosition
         .map { pos -> pos.azimuth }
 
-    override val sunAzimuthScreenRelative : Observable<AnimationData> = compassDegree
+    override val sunPositionScreenRelative : Observable<SunAnimationData> = compassDegree
         .withLatestFrom(sunAzimuth)
         .map { (compassDegree, sunAzimuth) ->
             var relativeAzimuth = (sunAzimuth + compassDegree.toDouble()) % 360
@@ -61,8 +60,9 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
             relativeAzimuth
         }
         .map { degree -> degree.toFloat() }
-        .scan( AnimationData(0f,0f), {animationData: AnimationData, degree: Float ->
-            AnimationData(animationData.currentDegree, degree)
+        .scan (SunAnimationData(0f,0f, 0, 0), { animationData: SunAnimationData, degree: Float ->
+            val radiusAddition = radiusAdditionFromDegree(degree)
+            SunAnimationData(animationData.currentDegree, degree, animationData.currentRadiusAddition, radiusAddition)
         })
 
     override val descriptionVisibility : Observable<Boolean> =
@@ -108,5 +108,17 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
                 loadData()
             }
         }
+    }
+
+    private fun radiusAdditionFromDegree(degree: Float): Int {
+        val value: Float = when (degree) {
+            in 0f..90f -> 90f - degree
+            in 90f..180f -> degree - 90f
+            in 180f..270f -> (270f - degree).absoluteValue
+            in 270f..360f -> (degree - 270f)
+            else -> 0f
+        }
+
+        return (value / 1.5).toInt()
     }
 }

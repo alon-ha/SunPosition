@@ -14,7 +14,7 @@
         android:src="@mipmap/icon_sun"
         app:layout_constraintCircle="@+id/compassImgView"
         app:layout_constraintCircleAngle="0"
-        app:layout_constraintCircleRadius="150dp"/>
+        app:layout_constraintCircleRadius="110dp"/>
 
     <ImageView
         android:id="@+id/compassImgView"

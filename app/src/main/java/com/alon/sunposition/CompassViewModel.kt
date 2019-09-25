@@ -24,7 +24,7 @@ interface CompassViewModelingInputs {
 }
 
 interface CompassViewModelingOutputs {
-    val compassPosition: Observable<AnimationData>
+    val compassPosition: Observable<CompassAnimationData>
 }
 
 
@@ -44,7 +44,7 @@ class CompassViewModel(context: Context): CompassViewModeling,
     private var lastAccelerometerSet = false
     private var lastMagnetometerSet = false
 
-    private val _compassPosition = BehaviorSubject.create<AnimationData>()
+    private val _compassPosition = BehaviorSubject.create<CompassAnimationData>()
     override val compassPosition = _compassPosition.hide()
 
     init {
@@ -72,7 +72,7 @@ class CompassViewModel(context: Context): CompassViewModeling,
                 val degree = (toDegrees(orientation[0].toDouble()) + 360).toFloat() % 360
                 val newDegree = -degree
 
-                val data = AnimationData(currentDegree, newDegree)
+                val data = CompassAnimationData(currentDegree, newDegree)
                 _compassPosition.onNext(data)
 
                 currentDegree = newDegree

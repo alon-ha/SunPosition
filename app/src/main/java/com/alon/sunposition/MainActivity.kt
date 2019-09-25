@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable
 import android.animation.ValueAnimator
+import android.content.res.Resources
 import android.view.animation.LinearInterpolator
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -34,6 +35,10 @@ class MainActivity : AppCompatActivity() {
     private val animationDuration: Long = 100
     private val compositeDisposable = CompositeDisposable()
     private val permissionsRequestLocationServiceCode = 1122
+    private val sunCircleRadius = 110
+
+    private val Int.px: Int
+        get() = (this * Resources.getSystem().displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,13 +105,13 @@ class MainActivity : AppCompatActivity() {
                 descriptionTxtView.text = txt
             }
 
-        val sunAzimuthSubscription =  mainActivityViewModel.outputs.sunAzimuthScreenRelative
+        val sunAzimuthSubscription =  mainActivityViewModel.outputs.sunPositionScreenRelative
             .withLatestFrom(isSunVisibleObservable)
             .filter{ (_, isVisible) ->
                 isVisible
             }
-            .map { (sunAzimuth, _) ->
-                sunAzimuth
+            .map { (sunPos, _) ->
+                sunPos
             }
             .throttleLast(throttleIntervalDuration, TimeUnit.MILLISECONDS)
             .observeOn(AndroidSchedulers.mainThread())
@@ -119,7 +124,7 @@ class MainActivity : AppCompatActivity() {
         compositeDisposable.add(sunAzimuthSubscription)
     }
 
-    private fun animateCompass(animationData: AnimationData) {
+    private fun animateCompass(animationData: CompassAnimationData) {
         val rotateAnimation = RotateAnimation(
             animationData.previousDegree,
             animationData.currentDegree,
@@ -131,7 +136,7 @@ class MainActivity : AppCompatActivity() {
         compassImgView.startAnimation(rotateAnimation)
     }
 
-    private fun animateSun(animationData: AnimationData) {
+    private fun animateSun(animationData: SunAnimationData) {
         val angleAnimation = ValueAnimator.ofFloat(animationData.previousDegree, animationData.currentDegree)
         angleAnimation.duration = animationDuration
         angleAnimation.interpolator = LinearInterpolator()
@@ -140,10 +145,22 @@ class MainActivity : AppCompatActivity() {
             val value = valueAnimator.animatedValue as Float
             val layoutParams = sunImgView.layoutParams as ConstraintLayout.LayoutParams
             layoutParams.circleAngle = value
-            sunImgView.layoutParams =layoutParams
+            sunImgView.layoutParams = layoutParams
+        }
+
+        val radiusAnimation = ValueAnimator.ofInt(animationData.previousRadiusAddition, animationData.currentRadiusAddition)
+        radiusAnimation.duration = animationDuration
+        radiusAnimation.interpolator = LinearInterpolator()
+
+        radiusAnimation.addUpdateListener { valueAnimator ->
+            val value = valueAnimator.animatedValue as Int
+            val layoutParams = sunImgView.layoutParams as ConstraintLayout.LayoutParams
+            layoutParams.circleRadius = (sunCircleRadius + value).px
+            sunImgView.layoutParams = layoutParams
         }
 
         angleAnimation.start()
+        radiusAnimation.start()
     }
 
     private fun isLocationPermissionGranted(): Boolean {
