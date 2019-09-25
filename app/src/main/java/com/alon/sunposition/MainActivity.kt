@@ -61,6 +61,9 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         mainActivityViewModel.inputs.onResume()
+        if (isLocationPermissionGranted()) {
+            mainActivityViewModel.inputs.loadDataIfNeeded()
+        }
     }
 
     override fun onPause() {

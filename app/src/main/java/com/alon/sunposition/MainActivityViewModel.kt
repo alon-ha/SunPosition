@@ -6,6 +6,7 @@ import io.reactivex.Observable
 import io.reactivex.rxkotlin.Observables
 import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.functions.BiFunction
+import java.util.*
 
 
 interface MainActivityViewModeling {
@@ -18,6 +19,7 @@ interface MainActivityViewModelingInputs {
     fun onResume()
     fun onPause()
     fun loadData()
+    fun loadDataIfNeeded()
 }
 
 interface MainActivityViewModelingOutputs {
@@ -37,6 +39,9 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
 
     override val compassViewModel: CompassViewModeling = CompassViewModel(context)
     override val sunViewModel: SunViewModeling = SunViewModel(context)
+    private val persistence: DataPersistencing = DataPersistence(context)
+
+    private val thresholdToLoadDataAgain = 1000 * 60 * 10 // Every 10 minutes
 
     private val compassDegree: Observable<Float> = compassViewModel.outputs
         .compassPosition
@@ -88,8 +93,20 @@ class MainActivityViewModel(context: Context): MainActivityViewModeling,
     }
 
     override fun loadData() {
+        persistence.saveLastDateLoadedSunPosition(Date())
         sunViewModel.inputs
             .loadSunPosition
             .onNext(0)
+    }
+
+    override fun loadDataIfNeeded() {
+        val now = Date()
+        val lastTime = persistence.getLastDateLoadedSunPosition()
+        if (lastTime != null) {
+            val diff = now.time - lastTime.time
+            if (now.time - lastTime.time > thresholdToLoadDataAgain) {
+                loadData()
+            }
+        }
     }
 }
