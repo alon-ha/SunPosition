@@ -4,7 +4,6 @@ import android.content.Context
 import java.util.*
 import android.content.Context.MODE_PRIVATE
 
-
 interface DataPersistencing {
     fun saveLastDateLoadedSunPosition(date: Date)
     fun getLastDateLoadedSunPosition(): Date?

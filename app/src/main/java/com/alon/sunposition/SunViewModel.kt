@@ -55,7 +55,6 @@ class SunViewModel(context: Context): SunViewModeling,
             .subscribeOn(Schedulers.io())
             .doOnNext {
                 _isLoading.onNext(true)
-                Log.d("Alon", "Before location--------")
             }
             .flatMap { hourOffset ->
                 locationService.fetchCurrentLocation()

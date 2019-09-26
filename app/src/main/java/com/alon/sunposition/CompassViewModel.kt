@@ -11,7 +11,6 @@ import android.content.Context
 import io.reactivex.*
 import io.reactivex.subjects.BehaviorSubject
 
-
 interface CompassViewModeling {
     val outputs: CompassViewModelingOutputs
     val inputs: CompassViewModelingInputs
@@ -34,7 +33,7 @@ class CompassViewModel(context: Context): CompassViewModeling,
     override val inputs = this
     override val outputs = this
 
-    private var sensorManager: SensorManager
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val accelerometer: Sensor
     private val magnetometer: Sensor
 
@@ -45,10 +44,9 @@ class CompassViewModel(context: Context): CompassViewModeling,
     private var lastMagnetometerSet = false
 
     private val _compassPosition = BehaviorSubject.create<CompassAnimationData>()
-    override val compassPosition = _compassPosition.hide()
+    override val compassPosition: Observable<CompassAnimationData> = _compassPosition.hide()
 
     init {
-        sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(TYPE_ACCELEROMETER)
         magnetometer = sensorManager.getDefaultSensor(TYPE_MAGNETIC_FIELD)
     }
@@ -65,10 +63,10 @@ class CompassViewModel(context: Context): CompassViewModeling,
         }
 
         if (lastAccelerometerSet && lastMagnetometerSet) {
-            val r = FloatArray(9)
-            if (SensorManager.getRotationMatrix(r, null, lastAccelerometer, lastMagnetometer)) {
+            val rArray = FloatArray(9)
+            if (SensorManager.getRotationMatrix(rArray, null, lastAccelerometer, lastMagnetometer)) {
                 val orientation = FloatArray(3)
-                SensorManager.getOrientation(r, orientation)
+                SensorManager.getOrientation(rArray, orientation)
                 val degree = (toDegrees(orientation[0].toDouble()) + 360).toFloat() % 360
                 val newDegree = -degree
 
